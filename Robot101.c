@@ -1,6 +1,6 @@
 /*
  \file		Robot101.c
- \author	${Alvin PS / Jared Kremer}
+ \author	${Alvin Poudel Sharma / Jared Kremer / Steven Adams}
  \date		${date}
  \brief		Simple Hello World! for the Ev3
 */
