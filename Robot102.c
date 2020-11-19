@@ -6,7 +6,7 @@
 
 #define SPEED 20
 #define BLUE 2
-#define RED 4
+#define RED 5
 
 #define WALL 2020
 #define OBSTACLE 2021
@@ -159,7 +159,7 @@ void *sonar_reader(void* p )
 				RotateMotor(OUT_C,10,10);
 			}
 			distance = ReadSensor(IN_4);
-			if (distance < 100)
+			if (distance < 300)
 			{
 				stop = 1 ;
 				Off(OUT_AB);
@@ -185,8 +185,44 @@ void *sonar_reader(void* p )
 	return NULL;
 }
 
+void RotateRoboSens(int deg,int speed)
+{
+	pthread_t cid;
+	int motor_angle =(int) abs(deg) * 2.64;
+
+	if(deg>0)
+	{
+		unsigned long req_time = motor_angle * 97 /speed;
+		int time = (int) req_time;
+		pthread_create(&cid, NULL, color_reader, &time);
+		OnFwdReg(OUT_A,speed);
+		OnFwdReg(OUT_B,-speed);
+		OnFwdSync(OUT_A,speed);
+		OnFwdSync(OUT_B,-speed);
+		Wait(req_time);
+		Off(OUT_A);
+		Off(OUT_B);
+
+	}
+	else
+	{
+		unsigned long req_time = motor_angle * 97 /speed;
+		int time = (int) req_time;
+		pthread_create(&cid, NULL, color_reader, &time);
+		OnFwdReg(OUT_A,-speed);
+		OnFwdReg(OUT_B,speed);
+		OnFwdSync(OUT_A,-speed);
+		OnFwdSync(OUT_B,speed);
+		Wait(req_time);
+		Off(OUT_A);
+		Off(OUT_B);
+	}
+	pthread_join(cid, NULL);
+
+}
 
 
+// Moves the robot and uses the sonar and color sensor at the same time.
 void DisplaceRoboSens(double distance, int speed)
 {
 	pthread_t cid;
@@ -244,7 +280,7 @@ int Sonar(int time)
 			RotateMotor(OUT_C,10,10);
 		}
 		distance = ReadSensor(IN_4);
-		if (distance < 100)
+		if (distance < 700)
 		{
 			Off(OUT_AB);
 			int counter = MotorRotationCount(OUT_C);
@@ -256,11 +292,8 @@ int Sonar(int time)
 			break;
 		}
 		diff =(int) (1000 * (clock() - start )/ CLOCKS_PER_SEC);
-
 	}
-
 	return distance ;
-
 }
 
 void goal_finding(){
@@ -311,56 +344,224 @@ if (!goal){
 }
 
 //Write wall following behavior.
-void wall_following(){
-//rotate robo +90 degrees once function is called
-// so that we are no longer facing the wall
+//void wall_following(){
+////rotate robo +90 degrees once function is called
+//// so that we are no longer facing the wall
+//
+////green = wall_following
+//SetLedPattern(LED_GREEN);
+//char color;
+//
+////int distance;
+//
+//
+//
+////rotate about our Original Angle.
+////RotateRobo(90,SPEED);
+//
+//while (!isExitButtonPressed()){
+//
+//
+//	Wait(100);
+//	color = precise_color(100);
+//	TermPrintf("Color - %d",color);
+//	// if our  color = blue then we know we are still on our wall
+//	if (color == 2 || color == 3)
+//	{
+//		Wait(1000);
+//		RotateRobo(90,10);
+//		LcdClean();
+//		TermPrintf("Color - %d",color);
+//		TermPrintf("Following the Wall");
+//		DisplaceRobo(1,SPEED);
+//		color = precise_color(100);
+//		//IF we hit a wall during our displacement we will turn to our original angle to continue along the corner.
+//		if  (color == 2 || color == 3){
+//			RotateRobo(90,10);
+//			DisplaceRobo(1,SPEED);
+//		}
+//	}
+//	else {
+//		DisplaceRobo(1,SPEED);
+//		RotateRobo(-90,10);
+//		wandering();
+//
+//	}
+//	// rotating back towards the wall to make sure we are still following it.
+//	RotateRobo(-90,10);
+//}
+////moves forward since there is no wall
+////DisplaceRobo(1,SPEED);
+//
+//}
 
-//green = wall_following
-SetLedPattern(LED_GREEN);
-char color;
+//void wall_following(){
+////rotate robo +90 degrees once function is called
+//// so that we are no longer facing the wall
+//
+////green = wall_following
+//SetLedPattern(LED_GREEN);
+//char color;
+//
+////int distance;
+//
+//
+//
+////rotate about our Original Angle.
+////RotateRobo(90,SPEED);
+//
+//while (!isExitButtonPressed()){
+//
+//
+//	Wait(100);
+//	color = precise_color(100);
+//	TermPrintf("Color - %d",color);
+//	// if our  color = blue then we know we are still on our wall
+//	if (color == 2 || color == 3)
+//	{
+//		Wait(1000);
+//		RotateRobo(90,10);
+//		LcdClean();
+//		TermPrintf("Color - %d",color);
+//		TermPrintf("Following the Wall");
+//		DisplaceRobo(1,SPEED);
+//		color = precise_color(100);
+//		//IF we hit a wall during our displacement we will turn to our original angle to continue along the corner.
+//		if  (color == 2 || color == 3){
+//			RotateRobo(90,10);
+//			DisplaceRobo(1,SPEED);
+//		}
+//	}
+//	else {
+//		DisplaceRobo(1,SPEED);
+//		RotateRobo(-90,10);
+//		wandering();
+//
+//	}
+//	// rotating back towards the wall to make sure we are still following it.
+//	RotateRobo(-90,10);
+//}
+////moves forward since there is no wall
+////DisplaceRobo(1,SPEED);
+//
+//}
 
-//int distance;
 
+//void wall_following()
+//{
+//	SetLedPattern(LED_GREEN);
+//	while (!isExitButtonPressed()){
+//
+//		Wait(100);
+//		int color = precise_color(100);
+//		TermPrintf("Color - %d",color);
+//		// if our  color = blue then we know we are still on our wall
+//		if (color == 2 || color == 3)
+//		{
+//			Wait(1000);
+//			RotateRobo(90,10);
+//			LcdClean();
+//			TermPrintf("Color - %d",color);
+//			TermPrintf("Following the Wall");
+//			if(precise_color(100)!=2 || precise_color(100)!=3 )
+//				DisplaceRoboSens(1,SPEED);
+//			else
+//			{
+//				RotateRobo(-90,10);
+//				if(precise_sensor(100)!=2 || precise_color(100)!=3 )
+//				{
+//					DisplaceRobotSens(1.0,SPEED);
+//				}
+//				else
+//				{
+//					RotateRobo(90,10);
+//					RotateRobo(90,10);
+//					if(precise_color(100)!=2 || precise_color(100)!=3 )
+//					{
+//						DisplaceRoboSens(1,SPEED);
+//					}
+//					else
+//					{
+//						RotateRobo(90,10);
+//						wandering();
+//					}
+//				}
+//			}
+//			color = precise_color(100);
+//
+//			//IF we hit a wall during our displacement we will turn to our original angle to continue along the corner.
+//
+//			if  (color == 2 || color == 3){
+//				RotateRobo(-90,10);
+//				DisplaceRobo(1,SPEED);
+//			}
+//		}
+//		else {
+//			DisplaceRoboSens(1,SPEED);
+//			RotateRobo(90,10);
+//		}
+//		// rotating back towards the wall to make sure we are still following it.
+//		RotateRobo(-90,10);
+//	}
+//	//moves forward since there is no wall
+//	//DisplaceRobo(1,SPEED);
+//}
 
-
-//rotate about our Original Angle.
-//RotateRobo(90,SPEED);
-
-while (!isExitButtonPressed()){
-
-
-	Wait(100);
-	color = precise_color(100);
-	TermPrintf("Color - %d",color);
-	// if our  color = blue then we know we are still on our wall
-	if (color == 2 || color == 3)
-	{
-		Wait(1000);
-		RotateRobo(90,10);
-		LcdClean();
-		TermPrintf("Color - %d",color);
-		TermPrintf("Following the Wall");
-		DisplaceRobo(1,SPEED);
+	void wall_following(){
+	//rotate robo +90 degrees once function is called
+	// so that we are no longer facing the wall
+	//green = wall_following
+	SetLedPattern(LED_GREEN);
+	char color;
+	//int distance;
+	//rotate about our Original Angle.
+	//RotateRobo(90,SPEED);
+	while (on_goal !=1 ){
+		Wait(100);
 		color = precise_color(100);
-		//IF we hit a wall during our displacement we will turn to our original angle to continue along the corner.
-		if  (color == 2 || color == 3){
+		TermPrintf("Color - %d",color);
+		// if our  color = blue then we know we are still on our wall
+		if (color == 2 || color == 3)
+		{
+
+			Wait(1000);
 			RotateRobo(90,10);
-			DisplaceRobo(1,SPEED);
+			LcdClean();
+			TermPrintf("Color - %d",color);
+			TermPrintf("Following the Wall");
+			//DisplaceRobo(1,SPEED);
+			color = precise_color(100);
+			//IF we hit a wall during our displacement we will turn to our original angle to continue along the corner.
+			if  (color != 2 || color != 3){
+				DisplaceRoboSens(1.0,SPEED);
+				color = precise_color(100);
+				if  (color != 2 || color != 3){
+					RotateRobo(-90,10);
+					}
+				if  (color == 2 || color == 3){
+
+					RotateRobo(90,10);
+					RotateRobo(90,10);
+				}
+			}
+
+			else
+			{
+				RotateRobo(-90,10);
+					}
 		}
+		else {
+			DisplaceRoboSens(10.0,SPEED);
+			//wandering();
+		}
+		// rotating back towards the wall to make sure we are still following it.
 	}
-	else {
-		DisplaceRobo(1,SPEED);
-		RotateRobo(-90,10);
-		wandering();
-
-	}
-	// rotating back towards the wall to make sure we are still following it.
-	RotateRobo(-90,10);
+	//moves forward since there is no wall
+	//DisplaceRobo(1,SPEED);
 }
-//moves forward since there is no wall
-//DisplaceRobo(1,SPEED);
 
-}
+
+
 //Write wandering behavior for the robot.
 //Wandering behavior looks for either a wall or the object and then calls the corresponding behavior functions.
 void wandering()
@@ -387,7 +588,7 @@ void wandering()
 
 		//TermPrintf("Wandering");
 		//Wait(1000);
-		color = precise_color(100);
+		color = precise_color(10);
 		LcdClean();
 		//DisplaceRobo(1,SPEED);
 
@@ -396,7 +597,8 @@ void wandering()
 		TermPrintf("ON THE WALL!!");
 		//Wait(1);
 		Off(OUT_AB);
-		wall_following();
+		break;
+		//wall_following();
 		//return WALL;
 	}
 	else if (color == 5)
@@ -404,7 +606,7 @@ void wandering()
 		TermPrintf("ON THE OBSTACLE!!");
 		//Wait(1);
 		Off(OUT_AB);
-		goal_finding();
+		//goal_finding();
 		break;
 
 	}
@@ -419,11 +621,7 @@ int main(void)
 
 	// INFO This code template works only with recent versions of the API. If TermPrintln is not found,
 	//      please update the API or use the "Hello World EV3 Project Old API" as template.
-
-
 	//TODO Place here your variables
-
-
 	//TODO Place here your code
 //	TermPrintln("Hello World!");
 //	TermPrintf("Press ENTER to exit");
@@ -443,18 +641,24 @@ int main(void)
 	//So();
 	//Sonar(40000);
 	//wandering()
+	//
 
-	DisplaceRoboSens(1.0, 10);
+	//int data = ReadSensor(IN_1);
+	wandering();
+	wall_following();
+	goal_finding();
 
-	on_wall =1;
-	while(on_wall)
-	{
-		if( precise_color(100)== RED)
-			{
-				goal_finding();
-			}
+	//DisplaceRoboSens(2.0, 10);
 
-	}
+//	on_wall =1;
+//	while(on_wall)
+//	{
+//		if( precise_color(100)== RED)
+//			{
+//				goal_finding();
+//			}
+//
+//	}
 	//wandering();
 
 //	while (!isExitButtonPressed())
