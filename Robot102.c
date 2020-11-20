@@ -108,7 +108,7 @@ void * color_reader(void* p )
 	clock_t end ;
 
 	int diff=0;
-	while(diff ,time)
+	while(1)
 	{
 		if(stop ==1)
 			return NULL;
@@ -141,6 +141,7 @@ void *sonar_reader(void* p )
 					RotateMotor(OUT_C,10,add);
 				else
 					RotateMotor(OUT_C,-10,-add);
+
 				return NULL;
 			}
 
@@ -169,12 +170,13 @@ void *sonar_reader(void* p )
 				else
 					RotateMotor(OUT_C,10,counter);
 				RotateRobo(-counter,10);
+
+
 				return NULL;
 			}
 			diff =(int) ( (clock() - start )/ CLOCKS_PER_SEC);
 //			 TermPrintf("Diff - %d    %d\n",diff,time);
 //			 Wait(1000);
-
 
 		}
 
@@ -222,6 +224,8 @@ void RotateRoboSens(int deg,int speed)
 }
 
 
+
+
 // Moves the robot and uses the sonar and color sensor at the same time.
 void DisplaceRoboSens(double distance, int speed)
 {
@@ -252,6 +256,7 @@ void DisplaceRoboSens(double distance, int speed)
 	Off(OUT_B);
 	pthread_join(cid, NULL);
 	pthread_join(sid, NULL);
+	stop =0;
 }
 
 
@@ -551,8 +556,8 @@ if (!goal){
 					}
 		}
 		else {
-			DisplaceRoboSens(10.0,SPEED);
-			//wandering();
+			//DisplaceRoboSens(10.0,SPEED);
+			wandering();
 		}
 		// rotating back towards the wall to make sure we are still following it.
 	}
@@ -571,6 +576,14 @@ void wandering()
 	 int color;
 	 int distance;
      color = precise_color(100);
+     pthread_t sid;
+     pthread_t cid;
+
+     int time = 50000;
+
+     pthread_create(&sid, NULL, sonar_reader, &time);
+     pthread_create(&cid, NULL, sonar_reader, &time);
+
 //	 distance = readSensor(IN_2);
 //	 TermPrintf("Color - %d",color);
 //	 TermPrintf("\n\nDistance - %d",distance);
@@ -583,12 +596,12 @@ void wandering()
      OnFwdReg(OUT_AB,15);
      OnFwdSync(OUT_AB,15);
      //LcdPrintf("%c",MotorPower(OUT_ALL));
-     while (!isExitButtonPressed() )
+     while (!isExitButtonPressed() || stop !=1)
 	{
 
 		//TermPrintf("Wandering");
 		//Wait(1000);
-		color = precise_color(10);
+		color = precise_color(20);
 		LcdClean();
 		//DisplaceRobo(1,SPEED);
 
@@ -597,7 +610,9 @@ void wandering()
 		TermPrintf("ON THE WALL!!");
 		//Wait(1);
 		Off(OUT_AB);
+		stop =1;
 		break;
+
 		//wall_following();
 		//return WALL;
 	}
@@ -606,12 +621,24 @@ void wandering()
 		TermPrintf("ON THE OBSTACLE!!");
 		//Wait(1);
 		Off(OUT_AB);
-		//goal_finding();
+		stop =1;
 		break;
+		//goal_finding();
+
 
 	}
 	}
 
+     stop =1;
+     Off(OUT_AB);
+     pthread_join(cid, NULL);
+     pthread_join(sid, NULL);
+     stop =0;
+
+     if(on_goal ==1)
+     {
+    	 goal_finding();
+     }
 
 }
 
