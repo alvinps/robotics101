@@ -306,19 +306,23 @@ void goal_finding(){
 	SetLedPattern(LED_ORANGE);
 
 
-	int max_angle = 45;
+	//trying several different angles to see which one is better
+	//int max_angle = 50;
+
+	int max_angle = 65;
 	distance = ReadSensor(IN_4);
 	int i;
-	//203.2 in mm  is 8 inches
-	//when we sense the red tape we are within 6 inches from the goal
+	//304.8 in mm  is 12 inches
+	//when we sense the red tape we are within 12 inches from the goal
+	int max_distance = 304.8;
 	bool goal = FALSE;
-	RotateRobo(-50,10);
+	RotateRobo(-max_angle,10);
 	Wait(100);
-	for (i = 0; i < 8 ;i++){
+	for (i = 0; i < 10 ;i++){
 		RotateRobo(10,10);
 		Wait(500);
 		distance = ReadSensor(IN_4);
-		if (distance < 203.2)
+		if (distance < max_distance)
 		{
 			goal = TRUE;
 			DisplaceRobo(1.5,10);
@@ -327,12 +331,12 @@ void goal_finding(){
 	}
 
 if (!goal){
-	RotateRobo(50,10);
-	for (i = 0; i < 8 ;i++){
+	RotateRobo(max_angle,10);
+	for (i = 0; i < 10 ;i++){
 			RotateRobo(-10,10);
 			Wait(500);
 			distance = ReadSensor(IN_4);
-			if (distance < 203.2)
+			if (distance < max_distance)
 			{
 				DisplaceRobo(1.5,10);
 				break;
@@ -703,8 +707,8 @@ int main(void)
 	//
 
 	//int data = ReadSensor(IN_1);
-	wandering();
-	wall_following();
+	//wandering();
+	//wall_following();
 	goal_finding();
 
 	//DisplaceRoboSens(2.0, 10);
