@@ -17,6 +17,9 @@ int on_goal = 0;
 int on_goal_sonar = 0;
 int angle_tracker = 0;
 int displace_tracker = 0;
+int turns = 0;
+int angle = -90;
+int counter = 0;
 
 void goal_wandering();
 
@@ -122,6 +125,7 @@ void * color_reader(void* p )
 		if(col == RED || col == BLUE){
 
 			Off(OUT_AB);
+			//DisplaceRobo(-0.1,5);
 			if(col == RED) on_goal =1;
 			stop = 1;
 			return NULL;
@@ -139,7 +143,7 @@ void *sonar_reader(void* p )
 
 		clock_t start = clock();
 
-		int diff=0,distance , counter = 0, current = 0, previous = 0, flip =  0, add = 0;
+		int diff=0,distance , counter = 0, current = 0, previous = 0, flip =  1, add = 0;
 		while(1)
 		{
 			if(stop == 1)
@@ -300,6 +304,7 @@ int Sonar(int time)
 }
 void goal_finding(){
 	int distance;
+	DisplaceRobo(-0.1,5);
 	SetLedPattern(LED_ORANGE);
 	PlaySound(SOUND_UP);
 
@@ -316,7 +321,7 @@ void goal_finding(){
 	RotateRobo(-max_angle,10);
 	Wait(100);
 	for (i = 0; i < 10 ;i++){
-		RotateRobo(10,10);
+
 		Wait(500);
 		distance = ReadSensor(IN_4);
 		if (distance < max_distance)
@@ -328,12 +333,13 @@ void goal_finding(){
 			exit(0);
 			break;
 		}
+		RotateRobo(10,10);
 	}
 
 if (!goal){
 	RotateRobo(max_angle,10);
 	for (i = 0; i < 10 ;i++){
-			RotateRobo(-10,10);
+
 			Wait(500);
 			distance = ReadSensor(IN_4);
 			if (distance < max_distance)
@@ -345,6 +351,7 @@ if (!goal){
 				exit(0);
 				break;
 			}
+			RotateRobo(-10,10);
 	}
 }
 	if(!goal)
@@ -366,13 +373,13 @@ void goal_wandering()
 	 //BLACK = wandering
 	 SetLedPattern(LED_ORANGE);
 	 int color;
-     color = precise_color(50);
+     color = precise_color(20);
 
      OnFwdReg(OUT_AB,SPEED);
      OnFwdSync(OUT_AB,SPEED);
      while (!isExitButtonPressed() || stop !=1)
 	{
-		color = precise_color(50);
+		color = precise_color(20);
 		LcdClean();
 	 if (color == 5)
 	{
@@ -393,6 +400,7 @@ void goal_wandering()
 	}
      stop =1;
      Off(OUT_AB);
+
      stop =0;
      on_goal =1;
 
@@ -424,8 +432,11 @@ void wandering()
 	if (color == 2 || color ==3 )
 	{
 		TermPrintf("ON THE WALL!!");
+
 		Off(OUT_AB);
+
 		stop =1;
+		//DisplaceRobo(-0.1,5);
 		break;
 	}
 	else if (color == 5)
@@ -434,6 +445,7 @@ void wandering()
 		Off(OUT_AB);
 		on_goal =1 ;
 		stop =1;
+		DisplaceRobo(-0.1,5);
 		goal_finding();
 		break;
 	}
@@ -464,10 +476,8 @@ void wall_following(){
 SetLedPattern(LED_GREEN);
 char color;
 //keeps track of the # of turns our robot has taken
-int turns = 0;
-int angle = 90;
 int distance = 0;
-int counter = 0;
+
 //int distance;
 //rotate about our Original Angle.
 //RotateRobo(90,SPEED);
@@ -482,7 +492,7 @@ while (on_goal !=1 ){
 	if (color == 2 || color == 3)
 	{
 		//Wait(1000);
-		if (turns >= 8){
+		if (turns >= 12){
 			turns = 0;
 			distance = 0;
 			angle = -90;
