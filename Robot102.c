@@ -128,18 +128,15 @@ void * color_reader(void* p )
 	int i;
 	clock_t start = clock();
 	clock_t end ;
-
 	int diff=0;
 	while(1)
 	{
         // exits if stop operation is called by any of the threaded functions
 		if(stop ==1)
 			return NULL;
-
 		int col = precise_color(20);
 		if(col == RED || col == BLUE){
             // on detectiong blue or red , it stops the motors and stops sonar function too.
-
 			Off(OUT_AB);
 			if(col == RED) on_goal =1;
 			stop = 1;
@@ -160,7 +157,6 @@ void *sonar_reader(void* p )
 	ResetRotationCount(OUT_C);
 
 		clock_t start = clock();
-
 		int diff=0,distance , counter = 0, current = 0, previous = 0, flip =  1, add = 0;
 		while(1)
 		{
@@ -171,10 +167,8 @@ void *sonar_reader(void* p )
 					RotateMotor(OUT_C,10,add);
 				else
 					RotateMotor(OUT_C,-10,-add);
-
 				return NULL;
 			}
-
 			if(add > 120) flip = 1;
 			if(add < -120) flip = 0;
 
@@ -182,7 +176,6 @@ void *sonar_reader(void* p )
 			{
 				add+=10;
 				RotateMotor(OUT_C,-10,10);
-
 			}
 			else
 			{
@@ -206,9 +199,7 @@ void *sonar_reader(void* p )
 				return NULL;
 			}
 			diff =(int) ( (clock() - start )/ CLOCKS_PER_SEC);
-
 		}
-
 		if(add > 0)
 			RotateMotor(OUT_C,10,add);
 		else
@@ -216,7 +207,7 @@ void *sonar_reader(void* p )
 	return NULL;
 }
 
-// THis is a multi threaded function that runs the motors, the color sensor and sonar sensor all at the same time
+// This is a multi threaded function that runs the motors, the color sensor and sonar sensor all at the same time
 // Moves the robot and uses the sonar and color sensor at the same time.
 void DisplaceRoboSens(double distance, int speed)
 {
@@ -251,25 +242,29 @@ void DisplaceRoboSens(double distance, int speed)
 	stop =0;
 }
 
-
+//Function to find our goal once we have reached the red tape indicating that our goal is within
+//range.
 void goal_finding(){
 	int distance;
+	//Backs up or robot so our sonar sensor can accurately detect the object.
 	DisplaceRobo(-0.1,5);
 	SetLedPattern(LED_ORANGE);
 	PlaySound(SOUND_UP);
 
-	//trying several different angles to see which one is better
-	//int max_angle = 50;
-
+	//Max angle we will turn our robot to scan the area for our object.
 	int max_angle = 90;
 	distance = ReadSensor(IN_4);
 	int i;
-	//304.8 in mm  is 12 inches
-	//when we sense the red tape we are within 12 inches from the goal
+	//350 in mm  is 13.7795 in2 inches
+	//When our color ensor detects the red tape we are within 13 from the goal.
 	int max_distance = 350;
+	//Goal keeps track of whether we have displaced the object.
 	bool goal = FALSE;
+	
 	RotateRobo(-max_angle,10);
 	Wait(100);
+	//Turns 10 degrees 10 times in order to return to its original orientation and scan the area for
+	//the object.
 	for (i = 0; i < 10 ;i++){
 
 		Wait(500);
@@ -312,7 +307,6 @@ if (!goal){
 	Wait(1000);
 	SetLedPattern(LED_GREEN);
 	StopSound();
-
 	FreeEV3();
 	exit(0);
 }
@@ -479,12 +473,11 @@ while (on_goal !=1 ){
 			if  (color == 2){
 
 				RotateRobo(angle,10);
-				DisplaceRoboSens(1.0,SPEED);
-				// turns++;
-			
+				RotateRobo(angle,10);
 			}
 		}
-
+		//If we hit a wall during our displacement, orientation is changed toward the wall
+		// to see there is still a wall to be followed. 
 		else
 		{
 			RotateRobo(-angle,10);
@@ -494,12 +487,7 @@ while (on_goal !=1 ){
 		
 		wandering();
 	}
-	// rotating back towards the wall to make sure we are still following it.
 }
-
-
-//moves forward since there is no wall
-
 }
 
 int main(void)
@@ -507,10 +495,9 @@ int main(void)
 	InitEV3();
 	// initializing the sensors in the robot
 	SetAllSensorMode(COL_COLOR,NO_SEN,NO_SEN,US_DIST_MM);
-	
+
 	wandering();
 	wall_following();
-
 	FreeEV3();
 	return 0;
 
