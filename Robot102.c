@@ -1,7 +1,6 @@
 #include <ev3.h>
 #include <pthread.h>
 #include <time.h>
-//#include "robo_functions.c"
 
 
 #define SPEED 13
@@ -17,12 +16,21 @@ int on_goal = 0;
 int on_goal_sonar = 0;
 int angle_tracker = 0;
 int displace_tracker = 0;
+
+//Keeps track of the # of turns our robot has taken. 
 int turns = 0;
+
+//The angle our robot will always turn when it reaches a wall.
 int angle = -90;
+
+//Counter to alternate between -90 and 90 degree angle turns to get our robot out of
+// infinite loops should it encounter one during its traversal.
 int counter = 0;
 
 void goal_wandering();
 
+
+// This function simply displaces the robot to the given distance with the provided speed
 void DisplaceRobo(double distance, int speed)
 {
 	if(distance > 0.0)
@@ -43,13 +51,15 @@ void DisplaceRobo(double distance, int speed)
 	Off(OUT_B);
 }
 
-
+// This function simply rotates the robot to the given angle with the provided speed
 void RotateRobo(int deg,int speed)
 {
 	int motor_angle =(int) abs(deg) * 2.64;
 
 	if(deg>0)
 	{
+        // forward movement
+        // calculating total time for robot to rotatei in the given direction
 		unsigned long req_time = motor_angle * 97 /speed;
 		OnFwdReg(OUT_A,speed);
 		OnFwdReg(OUT_B,-speed);
@@ -62,6 +72,7 @@ void RotateRobo(int deg,int speed)
 	}
 	else
 	{
+        // reverse movement
 		unsigned long req_time = motor_angle * 97 /speed;
 		OnFwdReg(OUT_A,-speed);
 		OnFwdReg(OUT_B,speed);
@@ -74,11 +85,11 @@ void RotateRobo(int deg,int speed)
 }
 
 
-
 bool isExitButtonPressed() {
     return ButtonIsDown(BTNEXIT);
 }
 
+// this function samples a set of color readings from the sensor and return the greatest color that occured in the sample;
 int precise_color(int data_count)
 {
 	int maxValue = 0, maxCount = 0, i, j;
@@ -86,9 +97,10 @@ int precise_color(int data_count)
 	for (i =0; i< data_count; i++)
 	{
 		measurement[i] = ReadSensor(IN_1);
+		// measures a sensor data and stores in a array
 		Wait(1);
 	}
-
+		// takes the mode.
 	   for (i = 0; i < data_count; ++i) {
 	      int count = 0;
 
@@ -107,7 +119,9 @@ int precise_color(int data_count)
 }
 
 
-
+// This function is a threaded fucntion that works in parallel to the wall_following. 
+// This detects a red or blue color and stops the motors immediately if RED or BLUE is detected.
+// This also makes sure that the sonar thread is also exited and is at its initial position
 void * color_reader(void* p )
 {
 	int time = *((int*) p) ;
@@ -118,14 +132,15 @@ void * color_reader(void* p )
 	int diff=0;
 	while(1)
 	{
+        // exits if stop operation is called by any of the threaded functions
 		if(stop ==1)
 			return NULL;
 
 		int col = precise_color(20);
 		if(col == RED || col == BLUE){
+            // on detectiong blue or red , it stops the motors and stops sonar function too.
 
 			Off(OUT_AB);
-			//DisplaceRobo(-0.1,5);
 			if(col == RED) on_goal =1;
 			stop = 1;
 			return NULL;
@@ -135,7 +150,10 @@ void * color_reader(void* p )
 	return NULL;
 }
 
-
+// This function is a threaded fucntion that works in parallel to the wall_following. 
+// This detects distance of an object/ obstacle from teh robot. When the threshold set is met,
+// it aligns the robot to the direction of the obstacle and also stops the motion of the robot.
+// It also stops the color thread. 
 void *sonar_reader(void* p )
 {
 	int time = *((int*) p) ;
@@ -148,6 +166,7 @@ void *sonar_reader(void* p )
 		{
 			if(stop == 1)
 			{
+                // rotates the sonar at an increment of 10 degree
 				if(add > 0)
 					RotateMotor(OUT_C,10,add);
 				else
@@ -173,6 +192,7 @@ void *sonar_reader(void* p )
 			distance = ReadSensor(IN_4);
 			if (distance < 600)
 			{
+                // on detecting the obstacle, the motor wheels are turned off, and the whole robot is oriented towards he direction of the obstacle
 				stop = 1 ;
 				on_goal_sonar =1;
 				Off(OUT_AB);
@@ -186,8 +206,7 @@ void *sonar_reader(void* p )
 				return NULL;
 			}
 			diff =(int) ( (clock() - start )/ CLOCKS_PER_SEC);
-//			 TermPrintf("Diff - %d    %d\n",diff,time);
-//			 Wait(1000);
+
 		}
 
 		if(add > 0)
@@ -197,41 +216,7 @@ void *sonar_reader(void* p )
 	return NULL;
 }
 
-void RotateRoboSens(int deg,int speed)
-{
-	pthread_t cid;
-	int motor_angle =(int) abs(deg) * 2.64;
-
-	if(deg>0)
-	{
-		unsigned long req_time = motor_angle * 97 /speed;
-		int time = (int) req_time;
-		pthread_create(&cid, NULL, color_reader, &time);
-		OnFwdReg(OUT_A,speed);
-		OnFwdReg(OUT_B,-speed);
-		OnFwdSync(OUT_A,speed);
-		OnFwdSync(OUT_B,-speed);
-		Wait(req_time);
-		Off(OUT_A);
-		Off(OUT_B);
-	}
-	else
-	{
-		unsigned long req_time = motor_angle * 97 /speed;
-		int time = (int) req_time;
-		pthread_create(&cid, NULL, color_reader, &time);
-		OnFwdReg(OUT_A,-speed);
-		OnFwdReg(OUT_B,speed);
-		OnFwdSync(OUT_A,-speed);
-		OnFwdSync(OUT_B,speed);
-		Wait(req_time);
-		Off(OUT_A);
-		Off(OUT_B);
-	}
-	pthread_join(cid, NULL);
-	stop = 0;
-}
-
+// THis is a multi threaded function that runs the motors, the color sensor and sonar sensor all at the same time
 // Moves the robot and uses the sonar and color sensor at the same time.
 void DisplaceRoboSens(double distance, int speed)
 {
@@ -241,6 +226,8 @@ void DisplaceRoboSens(double distance, int speed)
 	{	// Positive Displacement of the robot. Forward
 		unsigned long req_time = (( 62000.0* fabs(distance))/speed);
 		int time = (int) req_time;
+
+        // calling threaded function for sonar and color sensor at the same time.
 		pthread_create(&cid, NULL, color_reader, &time);
 		pthread_create(&sid, NULL, sonar_reader, &time);
 		OnFwdReg(OUT_AB,speed);
@@ -257,51 +244,14 @@ void DisplaceRoboSens(double distance, int speed)
 	stop =1;
 	Off(OUT_A);
 	Off(OUT_B);
+    
 	pthread_join(cid, NULL);
 	pthread_join(sid, NULL);
+    // reseting sonar and color sensor function for next use
 	stop =0;
-
-
 }
 
-int Sonar(int time)
-{
-	ResetRotationCount(OUT_C);
 
-	clock_t start = clock();
-	clock_t end ;
-	int diff=0,distance, current = 0, previous = 0, flip =  0, add = 0;
-	while(diff < time)
-	{
-
-		if(add > 120) flip = 1;
-		if(add < -120) flip = 0;
-		if(flip ==0)
-		{
-			add+=10;
-			RotateMotor(OUT_C,-10,10);
-		}
-		else
-		{
-			add-=10;
-			RotateMotor(OUT_C,10,10);
-		}
-		distance = ReadSensor(IN_4);
-		if (distance < 700)
-		{
-			Off(OUT_AB);
-			int counter = MotorRotationCount(OUT_C);
-			RotateRobo(-counter,10);
-			if(counter >0)
-				RotateMotor(OUT_C,-10,counter);
-			else
-				RotateMotor(OUT_C,10,counter);
-			break;
-		}
-		diff =(int) (1000 * (clock() - start )/ CLOCKS_PER_SEC);
-	}
-	return distance ;
-}
 void goal_finding(){
 	int distance;
 	DisplaceRobo(-0.1,5);
@@ -367,7 +317,9 @@ if (!goal){
 	exit(0);
 }
 
-
+// This function is executed when the sonar detects our goal object, this function will simply displace
+// the robo until the color sensor detects the color red, It then executes goal_finding.
+// If a blue wall is hit during the time of the robots displacement, it simply returns back to wall following
 void goal_wandering()
 {
 	 //BLACK = wandering
@@ -383,13 +335,15 @@ void goal_wandering()
 		LcdClean();
 	 if (color == 5)
 	{
+        
 		Off(OUT_AB);
 		on_goal =1 ;
 		stop =1;
 		break;
 	}
-	 if (color == 2 || color ==3)
+	 if (color == 2 )
 	 	{
+             // if blue is detected, go into wall following instead of goal finding.
 	 		Off(OUT_AB);
 	 		on_goal =0 ;
 	 		stop = 0;
@@ -408,6 +362,7 @@ void goal_wandering()
      LcdClean();
 }
 
+
 //Write wandering behavior for the robot.
 //Wandering behavior looks for either a wall or the object and then calls the corresponding behavior functions.
 void wandering()
@@ -422,23 +377,28 @@ void wandering()
 
      int time = 50000;
      pthread_create(&sid, NULL, sonar_reader, &time);
+
+	 //Robot continues forward until the motors are turned off in the while loop.
      OnFwdReg(OUT_AB,SPEED);
      OnFwdSync(OUT_AB,SPEED);
+	 //While runs until the exit button is pressed on the robot OR the stop variable = 1.
      while (!isExitButtonPressed() || stop !=1)
 	{
 
 		color = precise_color(20);
 		LcdClean();
-	if (color == 2 || color ==3 )
+	// If color == 2(blue) then we know our sensor detects a wall and we can call
+	// our wall following behavior.
+	if (color == 2)
 	{
 		TermPrintf("ON THE WALL!!");
 
 		Off(OUT_AB);
-
 		stop =1;
-		//DisplaceRobo(-0.1,5);
 		break;
 	}
+	//if color = 5 (RED) then the robot is on the obstacle and the goal finding behavior
+	//can be called.
 	else if (color == 5)
 	{
 		TermPrintf("ON THE OBSTACLE!!");
@@ -450,11 +410,11 @@ void wandering()
 		break;
 	}
 	}
+	//Turns off all of our motors on our robot.
      stop =1;
      Off(OUT_AB);
-     //pthread_join(cid, NULL);
      pthread_join(sid, NULL);
-     stop =0;
+     stop = 0;
 
      if(on_goal_sonar ==1)
      {
@@ -472,71 +432,56 @@ void wandering()
 void wall_following(){
 //rotate robo +90 degrees once function is called
 // so that we are no longer facing the wall
-//green = wall_following
 SetLedPattern(LED_GREEN);
 char color;
-//keeps track of the # of turns our robot has taken
-int distance = 0;
 
-//int distance;
-//rotate about our Original Angle.
-//RotateRobo(90,SPEED);
+
 while (on_goal !=1 ){
 
-//	Wait(100);
 	color = precise_color(100);
-	TermPrintf("Color - %d",color);
-	// if our  color = blue then we know we are still on our wall
-	if(color ==5) goal_finding();
+	//If the color sensor reads red then we have reached our goal and we can call the goal_finding
+	//behavior.
+	if(color == 5) goal_finding();
 
-	if (color == 2 || color == 3)
+	// If our  color = blue then we know we are still on a wall.
+	if (color == 2)
 	{
-		//Wait(1000);
+		//If our robot has made 12 total turns and we STILL have not made it to the goal
+		//then we can assume that our robot is stuck and that it needs to change its turning
+		//angle to get out of the loop.
 		if (turns >= 12){
 			turns = 0;
-			distance = 0;
-			angle = -90;
-			TermPrintf("/n/n/n\t\t%d",turns);
-			LcdClean();
+			angle = 90;
+			//Changes the angle again if we get stuck in another loop during the navigation process.
 			if(counter % 2 != 0 ){
-				angle = 90;
+				angle = -90;
 			}
 			counter++;
 		}
-		else{
-
-
-			TermPrintf("/n/n/n\t\t%d",turns);
-		    LcdClean();
-		}
+		//Since we are on the wall we need to turn our robot in order to not run into the wall. 
 		RotateRobo(angle,10);
 		turns++;
-		LcdClean();
-		TermPrintf("Color - %d",color);
 		TermPrintf("Following the Wall");
-		//DisplaceRobo(1,SPEED);
+		
 		color = precise_color(100);
-		//IF we hit a wall during our displacement we will turn to our original angle to continue along the corner.
-		if  (color != 2 || color != 3){
+		//If our color sensor does NOT detect a wall we are safe to move forward.
+		if  (color != 2){
 			DisplaceRoboSens(1.0,SPEED);
-			distance++;
-
 			color = precise_color(100);
-			if  (color != 2 || color != 3){
-				//Testing that we are still on the wall.
+			//Testing that we are still on the wall.
+			if  (color != 2){
 				RotateRobo(-angle,10);
 				}
-				//DisplaceRoboSens(1.0,5);
 				color = precise_color(100);
 
-			if  (color == 2 || color == 3){
+			//If we are still on our wall then we can rotate again back to our previous
+			//orientation and continue along the wall.
+			if  (color == 2){
 
 				RotateRobo(angle,10);
-				RotateRobo(angle,10);
-				turns++;
-				TermPrintf("/n/n/n\t\t%d",turns);
-//				wait(1000);
-				LcdClean();
+				DisplaceRoboSens(1.0,SPEED);
+				// turns++;
+			
 			}
 		}
 
@@ -546,7 +491,7 @@ while (on_goal !=1 ){
 				}
 	}
 	else {
-		//DisplaceRoboSens(10.0,SPEED);
+		
 		wandering();
 	}
 	// rotating back towards the wall to make sure we are still following it.
@@ -554,127 +499,17 @@ while (on_goal !=1 ){
 
 
 //moves forward since there is no wall
-//DisplaceRobo(1,SPEED);
+
 }
 
 int main(void)
 {
 	InitEV3();
-
+	// initializing the sensors in the robot
 	SetAllSensorMode(COL_COLOR,NO_SEN,NO_SEN,US_DIST_MM);
-
+	
 	wandering();
 	wall_following();
-//	goalwandering;
-//	goal_finding();
-
-
-//	on_wall =1;
-//	while(on_wall)
-//	{
-//		if( precise_color(100)== RED)
-//			{
-//				goal_finding();
-//			}
-//
-//	}
-	//wandering();
-
-//	while (!isExitButtonPressed())
-//    {
-//		int color = precise_color(25);
-////		TermPrintf("Color: %d",color);
-//		switch(color){
-//					case 0 :
-//						TermPrintf("%d - Transparent",color);
-//						break;
-//					case 1 :
-//						TermPrintf("%d - Black",color);
-//						break;
-//					case 2 :
-//						TermPrintf("%d - Blue",color);
-//						break;
-//					case 3 :
-//						TermPrintf("%d - Green",color);
-//						break;
-//					case 4 :
-//						TermPrintf("%d - Yellow",color);
-//						break;
-//					case 5 :
-//						TermPrintf("%d - Red", color);
-//						break;
-//					case 6 :
-//						TermPrintf("%d - White", color);
-//						break;
-//					case 7 :
-//						TermPrintf("%d - Brown",color);
-//						break;
-//					default :
-//						TermPrintf("No Default Color : %d",color);
-//						break;
-//					}
-//				Wait(1000);
-//	         	LcdClean();
-//    }
-
-
-	//wall_following();
-	//wandering();
-	//wall_following();
-
-	//goal_finding();
-
-
-//	Testing our sensors to make sure they work.
-//	while (!isExitButtonPressed())
-//	{
-//		    SetAllSensorMode(COL_COLOR,US_DIST_MM,NO_SEN,NO_SEN);
-//			char color;
-//			int distance;
-//			color = readSensor(IN_1);
-//			//LcdPrintf("Color : %c",color);
-//			//TermPrintf("Color: %d",color);
-//			distance = readSensor(IN_2);
-//			//TermPrintf("Distance : %d",distance);
-//		//	Wait(1000);
-//		//	LcdClean();
-//
-//
-//			switch(color){
-//			case 0 :
-//				TermPrintf("Transparent");
-//				break;
-//			case 1 :
-//				TermPrintf("Black");
-//				break;
-//			case 2 :
-//				TermPrintf("Blue");
-//				break;
-//			case 3 :
-//				TermPrintf("Green");
-//				break;
-//			case 4 :
-//				TermPrintf("Yellow");
-//				break;
-//			case 5 :
-//				TermPrintf("Red");
-//				break;
-//			case 6 :
-//				TermPrintf("White");
-//				break;
-//			case 7 :
-//				TermPrintf("Brown");
-//				break;
-//			default :
-//				TermPrintf("No Default Color : %d",color);
-//				break;
-//			}
-//			//TermPrintf("\n\nDistance - %d",distance);
-//			Wait(1000);
-//			LcdClean();
-//
-//	}
-
 
 	FreeEV3();
 	return 0;
